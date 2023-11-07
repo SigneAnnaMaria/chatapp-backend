@@ -20,6 +20,8 @@ const socketUserMap = {}
 
 io.on('connection', (socket) => {
   socket.emit('rooms_list', rooms)
+  console.log('users in lobby')
+  console.log(roomsUsersMap)
 
   socket.on('get_rooms_list', () => {
     socket.emit('rooms_list', rooms)
@@ -34,6 +36,17 @@ io.on('connection', (socket) => {
   })
 
   socket.on('join_room', (data) => {
+    console.log('data')
+    console.log(data)
+    console.log(
+      'server registered a user: ' +
+        data.username +
+        'joining a room: ' +
+        data.roomId
+    )
+
+    console.log('users in room when joining a new room')
+    console.log(roomsUsersMap)
     const roomId = data.roomId
     const username = data.username
 
@@ -41,7 +54,13 @@ io.on('connection', (socket) => {
       roomsUsersMap[roomId] = []
     }
     roomsUsersMap[roomId].push(username)
+
+    console.log('roomsUsersMap[roomId]')
+    console.log(roomsUsersMap[roomId])
+
     socket.join(roomId)
+    io.to(roomId).emit('users_list', roomsUsersMap[roomId])
+    io.emit('test_event', 'This is a test message.')
   })
 
   socket.on('leave_room', (data) => {
@@ -51,10 +70,13 @@ io.on('connection', (socket) => {
         (user) => user !== username
       )
       socket.leave(roomId)
+      io.to(roomId).emit('users_list', roomsUsersMap[roomId])
     }
   })
 
   socket.on('send_message', (data) => {
+    console.log('data.room')
+    console.log(data.room)
     const room = data.room
     const messageContent = {
       username: data.username,
@@ -65,20 +87,24 @@ io.on('connection', (socket) => {
       roomMessages[room] = []
     }
     roomMessages[room].push(messageContent)
+    console.log('roomMessages')
+    console.log(roomMessages)
     io.to(room).emit('receive_message', messageContent)
   })
 
   socket.on('disconnect', () => {
     const username = socketUserMap[socket.id]
+    console.log('diconnected username: ' + username)
     delete socketUserMap[socket.id]
     for (const roomId in roomsUsersMap) {
       roomsUsersMap[roomId] = roomsUsersMap[roomId].filter(
         (user) => user !== username
       )
+      io.to(roomId).emit('users_list', roomsUsersMap[roomId])
     }
   })
 })
 
 server.listen(3001, () => {
-  console.log('backend running')
+  console.log('Server listening on port 3001')
 })
